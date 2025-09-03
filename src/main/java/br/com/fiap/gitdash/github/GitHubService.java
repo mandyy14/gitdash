@@ -21,15 +21,45 @@ public class GitHubService {
         this.restTemplate = restTemplate;
     }
 
-    public List<RepositoryInfo> getUserRepositories(String tokenValue) {
+    //  Buscar dados do usuário
+    public UserInfo getUserInfo(String tokenValue) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", "Bearer " + tokenValue);
+        HttpEntity<String> entity = new HttpEntity<>(headers);
 
+        ResponseEntity<String> response = restTemplate.exchange(
+                "https://api.github.com/user",
+                HttpMethod.GET,
+                entity,
+                String.class
+        );
+
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode root = mapper.readTree(response.getBody());
+
+            UserInfo user = new UserInfo();
+            user.setLogin(root.path("login").asText());
+            user.setName(root.path("name").asText());
+            user.setAvatarUrl(root.path("avatar_url").asText());
+            user.setHtmlUrl(root.path("html_url").asText());
+
+            return user;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    // Buscar repositórios do usuário
+    public List<RepositoryInfo> getUserRepositories(String tokenValue) {
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", "Bearer " + tokenValue);
 
         HttpEntity<String> entity = new HttpEntity<>(headers);
 
         ResponseEntity<String> response = restTemplate.exchange(
-                "https://api.github.com/user/repos?sort=created&direction=desc\";",
+                "https://api.github.com/user/repos?sort=created&direction=desc",
                 HttpMethod.GET,
                 entity,
                 String.class
@@ -44,6 +74,7 @@ public class GitHubService {
                 repoInfo.setName(repo.path("name").asText());
                 repoInfo.setDescription(repo.path("description").asText());
 
+                // pegar commits
                 String commitsUrl = repo.path("commits_url").asText().replace("{/sha}", "");
                 ResponseEntity<String> commitsResponse = restTemplate.exchange(
                         commitsUrl,
@@ -53,9 +84,7 @@ public class GitHubService {
                 );
 
                 JsonNode commitsRoot = mapper.readTree(commitsResponse.getBody());
-                if (commitsRoot.isArray() && !commitsRoot.isEmpty()) {
-                    String lastCommitMessage = commitsRoot.get(0).path("commit").path("message").asText();
-                    repoInfo.setLastCommitMessage(lastCommitMessage);
+                if (commitsRoot.isArray()) {
                     repoInfo.setCommitCount(commitsRoot.size());
                 }
 

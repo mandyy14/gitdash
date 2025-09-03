@@ -21,8 +21,16 @@ public class GitHubController {
     public String getUserInfo(Model model, @RegisteredOAuth2AuthorizedClient("github") OAuth2AuthorizedClient authorizedClient) {
 
         String tokenValue = authorizedClient.getAccessToken().getTokenValue();
+
+        // dados do usuário
+        UserInfo user = gitHubService.getUserInfo(tokenValue);
+
+        // repositórios
         List<RepositoryInfo> repos = gitHubService.getUserRepositories(tokenValue);
 
+        model.addAttribute("name", user.getName());
+        model.addAttribute("avatar_url", user.getAvatarUrl());
+        model.addAttribute("html_url", user.getHtmlUrl());
         model.addAttribute("repos", repos);
 
         return "user";
